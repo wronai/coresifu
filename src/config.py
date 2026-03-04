@@ -20,7 +20,7 @@ class Config:
     docker_timeout: int = 120  # seconds for container boot
 
     # LLM for supervisor reasoning
-    supervisor_model: str = "openrouter/anthropic/claude-sonnet-4-20250514"
+    supervisor_model: str = "openrouter/moonshotai/kimi-k2.5"
     fallback_model: str = "openrouter/meta-llama/llama-3.3-70b-instruct:free"
     api_key: str = ""
 

@@ -52,7 +52,7 @@ class DockerRunner:
                 ],
                 capture_output=True,
                 text=True,
-                timeout=300,
+                timeout=600,
             )
 
             if r.returncode != 0:

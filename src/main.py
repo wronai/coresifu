@@ -31,7 +31,7 @@ structlog.configure(
 log = structlog.get_logger()
 
 from .config import Config
-from .docker_runner import create_runner
+from .docker_runner import create_runner, SubprocessRunner
 from .communicator import Communicator
 from .analyzer import Analyzer, Issue
 from .surgeon import Surgeon
@@ -47,9 +47,10 @@ class Supervisor:
       boot → test → diagnose → [plan → patch → verify → commit] → stop
     """
 
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, runner_factory=None):
         self.cfg = config
-        self.runner = create_runner(config)
+        runner_factory = runner_factory or create_runner
+        self.runner = runner_factory(config)
         self.analyzer = Analyzer(config)
         self.surgeon = Surgeon(config)
         self.git = GitManager(config)
@@ -405,6 +406,11 @@ def main():
         help="List available test scenarios",
     )
 
+    parser.add_argument(
+        "--no-docker",
+        action="store_true",
+        help="Use subprocess instead of Docker (faster, no build needed)",
+    )
     args = parser.parse_args()
 
     if args.list_scenarios:
@@ -421,6 +427,9 @@ def main():
     if args.model:
         cfg.supervisor_model = args.model
 
+    # Choose runner: Docker or Subprocess
+    runner_factory = SubprocessRunner if args.no_docker else create_runner
+
     errors = cfg.validate()
     if errors:
         for e in errors:
@@ -429,7 +438,7 @@ def main():
 
     if args.test_only:
         # Test-only mode: boot, test, report, exit
-        runner = create_runner(cfg)
+        runner = runner_factory(cfg)
         if not runner.build():
             sys.exit(1)
 
@@ -457,7 +466,7 @@ def main():
         sys.exit(0 if ok else 1)
 
     # Full supervisor mode
-    supervisor = Supervisor(cfg)
+    supervisor = Supervisor(cfg, runner_factory=runner_factory)
     supervisor.run(max_cycles=args.cycles)
 
 
