@@ -1,0 +1,63 @@
+# Custom test scenarios for evo-supervisor
+# Place in scenarios/ directory, load with --scenarios-file
+
+polish_commands:
+  name: "Polish Language Commands"
+  description: "Test Polish language command handling"
+  steps:
+    - command: "cześć"
+      timeout: 15
+      expect_any: ["cześć", "hej", "witaj", "dzień dobry"]
+      fail_on: ["Traceback", "CRASH"]
+
+    - command: "pokaż umiejętności"
+      timeout: 10
+      expect_any: ["skill", "echo", "shell", "umiejętn"]
+      fail_on: ["Traceback"]
+
+    - command: "pomoc"
+      timeout: 10
+      expect_any: ["help", "pomoc", "komend", "/"]
+      fail_on: ["Traceback"]
+
+benchmark_test:
+  name: "Benchmark Skill Test"
+  description: "Run benchmark and check results make sense"
+  steps:
+    - command: "/run benchmark"
+      timeout: 120
+      expect_any: ["benchmark", "model", "score", "quality"]
+      fail_on: ["Traceback", "CRASH"]
+
+web_search_test:
+  name: "Web Search Skill"
+  description: "Test web search functionality"
+  steps:
+    - command: "szukaj w internecie: Python 3.12 release date"
+      timeout: 30
+      expect_any: ["python", "2024", "release", "search"]
+      fail_on: ["Traceback", "CRASH"]
+
+edge_cases:
+  name: "Edge Cases & Robustness"
+  description: "Test unusual inputs don't crash"
+  steps:
+    - command: "a"
+      timeout: 10
+      expect_any: []
+      fail_on: ["Traceback", "CRASH"]
+
+    - command: "🤖🔥💀"
+      timeout: 10
+      expect_any: []
+      fail_on: ["Traceback", "CRASH", "UnicodeError"]
+
+    - command: "/nonexistent_command_xyz"
+      timeout: 10
+      expect_any: []
+      fail_on: ["Traceback", "CRASH"]
+
+    - command: "x" # repeat 500x
+      timeout: 10
+      expect_any: []
+      fail_on: ["Traceback", "CRASH", "MemoryError"]

@@ -1,0 +1,20 @@
+FROM python:3.11-slim
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git docker.io \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /supervisor
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Workspace dirs
+RUN mkdir -p /workspace /logs /patches
+
+ENV PYTHONUNBUFFERED=1
+
+ENTRYPOINT ["python", "-m", "src.main"]
+CMD ["--coreskill-path", "/coreskill", "--cycles", "5"]

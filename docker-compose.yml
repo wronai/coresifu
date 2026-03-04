@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  # Coreskill under test — runs in isolated container
+  coreskill:
+    build:
+      context: ${CORESKILL_PATH:?Set CORESKILL_PATH}
+      dockerfile: ${PWD}/Dockerfile.coreskill
+    environment:
+      - EVO_TEXT_ONLY=1
+      - PYTHONUNBUFFERED=1
+      - TERM=dumb
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+    volumes:
+      # Mount source for live code changes (read-write for patches)
+      - ${CORESKILL_PATH}:/app
+    stdin_open: true
+    networks:
+      - evo-net
+
+  # Supervisor — the outer core that tests and fixes
+  supervisor:
+    build:
+      context: .
+      dockerfile: Dockerfile.supervisor
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - CORESKILL_PATH=/coreskill
+    volumes:
+      # Mount coreskill source for reading/patching
+      - ${CORESKILL_PATH}:/coreskill
+      # Persist logs and journal
+      - ./workspace:/workspace
+      - ./logs:/logs
+      - ./patches:/patches
+    depends_on:
+      - coreskill
+    networks:
+      - evo-net
+
+networks:
+  evo-net:
+    driver: bridge

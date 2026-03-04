@@ -1,0 +1,23 @@
+FROM python:3.11-slim
+
+# System deps for audio stubs (coreskill needs them even in text mode)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    git alsa-utils espeak-ng sox \
+    && rm -rf /var/lib/apt/lists/*
+
+# Python deps
+RUN pip install --no-cache-dir litellm sentence-transformers requests
+
+WORKDIR /app
+
+# Copy coreskill source (mounted or copied)
+COPY . /app/
+
+# Disable voice mode, force text-only
+ENV EVO_TEXT_ONLY=1
+ENV PYTHONUNBUFFERED=1
+ENV TERM=dumb
+
+# Entry: run main.py but don't start automatically
+# (supervisor will exec into the container)
+CMD ["python3", "main.py", "--no-voice"]
