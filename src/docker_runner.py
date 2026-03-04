@@ -87,7 +87,7 @@ class DockerRunner:
             "-e", "TERM=dumb",
             *env_args,
             self.cfg.docker_image,
-            "python3", "main.py", "--no-voice",
+            "python3", "main.py",
         ]
 
         log.info("docker_start", cmd=" ".join(cmd[:8]))
@@ -152,7 +152,7 @@ class SubprocessRunner:
         if self.cfg.api_key:
             env["OPENROUTER_API_KEY"] = self.cfg.api_key
 
-        cmd = ["python3", "main.py", "--no-voice"]
+        cmd = ["python3", "main.py"]
 
         log.info("subprocess_start", cwd=str(self.cfg.coreskill_path))
 

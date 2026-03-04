@@ -31,7 +31,7 @@ class Communicator:
     Uses a background reader thread to handle stdout non-blockingly.
     """
 
-    PROMPT_PATTERN = re.compile(r"(?:you|evo)>\s*$", re.MULTILINE)
+    PROMPT_PATTERN = re.compile(r"(?:\x1b\[\d+m)?(?:you|evo)>\s*(?:\x1b\[0m)?$", re.MULTILINE)
     ERROR_PATTERNS = [
         re.compile(r"\[(?:ERROR|FAIL|CRASH)\](.+)", re.IGNORECASE),
         re.compile(r"Traceback \(most recent call last\)"),

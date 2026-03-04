@@ -1,5 +1,5 @@
 # goal.yaml - Goal configuration file
-# Generated: 2026-03-04 13:56:37
+# Generated: 2026-03-04 13:57:01
 # Documentation: https://github.com/wronai/goal#configuration
 #
 # This file configures Goal's behavior for:
@@ -21,6 +21,7 @@ versioning:
   strategy: semver
   files:
   - VERSION
+  - .venv/lib/python3.13/site-packages/httpcore/__init__.py:__version__
   bump_rules:
     patch: 10
     minor: 50
