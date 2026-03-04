@@ -3,6 +3,7 @@ import subprocess
 import shutil
 import time
 import json
+import uuid
 from pathlib import Path
 from typing import Optional
 
@@ -18,6 +19,7 @@ class DockerRunner:
         self.cfg = config
         self.container_id: Optional[str] = None
         self._docker = shutil.which("docker")
+        self._container_name = f"evo-coreskill-{uuid.uuid4().hex[:8]}"
 
     def available(self) -> bool:
         """Check if Docker is available."""
@@ -80,7 +82,7 @@ class DockerRunner:
             "docker", "run",
             "--rm",
             "-i",                    # interactive stdin
-            "--name", "evo-coreskill-test",
+            "--name", self._container_name,
             "-v", f"{self.cfg.coreskill_path}:/app:ro",  # mount source read-only
             "-e", "EVO_TEXT_ONLY=1",
             "-e", "PYTHONUNBUFFERED=1",
@@ -111,12 +113,12 @@ class DockerRunner:
         """Stop running container."""
         try:
             subprocess.run(
-                ["docker", "stop", "evo-coreskill-test"],
+                ["docker", "stop", self._container_name],
                 capture_output=True,
                 timeout=15,
             )
             subprocess.run(
-                ["docker", "rm", "-f", "evo-coreskill-test"],
+                ["docker", "rm", "-f", self._container_name],
                 capture_output=True,
                 timeout=10,
             )
@@ -152,9 +154,9 @@ class SubprocessRunner:
         if self.cfg.api_key:
             env["OPENROUTER_API_KEY"] = self.cfg.api_key
 
-        cmd = ["python3", "main.py"]
+        cmd = ["python3", "-u", "main.py"]
 
-        log.info("subprocess_start", cwd=str(self.cfg.coreskill_path))
+        log.info("subprocess_start", cwd=str(self.cfg.coreskill_path), cmd=cmd, env_keys=list(env.keys()))
 
         try:
             proc = subprocess.Popen(

@@ -310,9 +310,10 @@ class Analyzer:
 AFFECTED FILES:
 """
         for fname, content in file_contents.items():
-            # Limit file size
             if len(content) > 8000:
-                content = content[:4000] + "\n... (truncated) ...\n" + content[-4000:]
+                content = self._truncate_to_context(
+                    content, issue.evidence, max_chars=8000
+                )
             context += f"\n--- {fname} ---\n{content}\n"
 
         llm_text = self._llm_call(PLAN_SYSTEM, context, max_tokens=4000)
@@ -331,6 +332,33 @@ AFFECTED FILES:
                  patches=len(parsed.get("patches", [])))
 
         return parsed
+
+    def _truncate_to_context(self, content: str, evidence: str,
+                              max_chars: int = 8000) -> str:
+        """Truncate large file keeping the region most relevant to the evidence.
+
+        Tries to center the window around the first occurrence of evidence text.
+        Falls back to head + tail when evidence is not found.
+        """
+        if len(content) <= max_chars:
+            return content
+
+        half = max_chars // 2
+        anchor = evidence[:60].strip() if evidence else ""
+
+        if anchor:
+            idx = content.find(anchor)
+            if idx >= 0:
+                start = max(0, idx - half)
+                end = min(len(content), idx + half)
+                prefix = "... (truncated before) ...\n" if start > 0 else ""
+                suffix = "\n... (truncated after) ..." if end < len(content) else ""
+                return prefix + content[start:end] + suffix
+
+        # Fallback: head + tail
+        return (content[:half] +
+                "\n... (truncated) ...\n" +
+                content[-half:])
 
     def _extract_traceback(self, text: str) -> str:
         """Extract the last traceback from output."""

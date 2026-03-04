@@ -117,11 +117,20 @@ class Journal:
 
         Returns the attempt record or None.
         """
-        desc_lower = issue_desc.lower()
+        desc_lower = issue_desc.lower().strip()
         for cycle in self.data["cycles"]:
             for patch in cycle.get("patches_applied", []):
-                if patch["issue"].lower() in desc_lower or \
-                   desc_lower in patch["issue"].lower():
+                prior_lower = patch["issue"].lower().strip()
+                # Require both strings to be meaningful length before substring
+                # matching to avoid "crash" matching every attempt
+                if len(desc_lower) >= 20 and len(prior_lower) >= 20:
+                    if prior_lower in desc_lower or desc_lower in prior_lower:
+                        return {
+                            "cycle": cycle["number"],
+                            "success": patch["success"],
+                            "verified": cycle.get("verified"),
+                        }
+                elif desc_lower == prior_lower:
                     return {
                         "cycle": cycle["number"],
                         "success": patch["success"],

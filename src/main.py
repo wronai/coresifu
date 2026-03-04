@@ -99,129 +99,30 @@ class Supervisor:
     def _run_one_cycle(self, cycle_num: int) -> str:
         """Run one improvement cycle. Returns outcome string."""
         journal_id = self.journal.start_cycle()
-
         try:
-            # ── Step 1: Boot coreskill ──
-            log.info("step_boot")
-            self._proc = self.runner.start()
-            if not self._proc:
-                self.journal.finish_cycle(journal_id, "boot_failed")
-                return "fatal"
+            boot_resp = self._phase_boot(journal_id)
+            if boot_resp is None:
+                return "fatal" if not self._proc else "error"
 
-            self._comm = Communicator(self._proc, self.cfg)
-            boot_resp = self._comm.wait_for_boot(self.cfg.boot_timeout)
+            results, report = self._phase_test(journal_id)
+            diagnosis = self._phase_diagnose(boot_resp, results, journal_id)
 
-            if not boot_resp.prompt_seen:
-                log.error("boot_no_prompt",
-                          output=boot_resp.raw[-300:])
-                self._shutdown()
-                self.journal.finish_cycle(journal_id, "boot_timeout")
-                return "error"
-
-            log.info("boot_ok", duration=boot_resp.duration_s)
-
-            # ── Step 2: Run test scenarios ──
-            log.info("step_test")
-            scenario_runner = ScenarioRunner(self._comm, self.cfg)
-            results = scenario_runner.run_all()
-            report = format_report(results)
-            print(report)
-
-            # Save report
-            report_path = (
-                self.cfg.logs_dir /
-                f"cycle_{journal_id}_report.txt"
-            )
-            report_path.write_text(report)
-
-            # ── Step 3: Diagnose ──
-            log.info("step_diagnose")
-            command_results = []
-            for sr in results:
-                for step in sr.steps:
-                    command_results.append({
-                        "command": step.command,
-                        "output": step.output,
-                        "duration_s": step.duration_s,
-                        "has_error": step.has_error,
-                        "has_warning": step.has_warning,
-                    })
-
-            diagnosis = self.analyzer.diagnose(
-                boot_resp.raw, command_results
-            )
-
-            self.journal.record_issues(journal_id, [
-                {"severity": i.severity, "description": i.description,
-                 "category": i.category}
-                for i in diagnosis.issues
-            ])
-
-            # ── Step 4: Check if anything to fix ──
             fixable = [
                 i for i in diagnosis.issues
-                if i.severity in ("critical", "error")
-                and i.affected_files
+                if i.severity in ("critical", "error") and i.affected_files
             ]
-
             if not fixable:
+                self._shutdown()
                 if diagnosis.overall_health == "healthy":
                     log.info("all_healthy_nothing_to_fix")
-                    self._shutdown()
                     self.journal.finish_cycle(journal_id, "healthy")
                     return "healthy"
-                else:
-                    log.info("issues_found_but_no_fix_targets",
-                             issues=len(diagnosis.issues))
-                    self._shutdown()
-                    self.journal.finish_cycle(journal_id, "no_fixable_issues")
-                    return "continue"
-
-            # ── Step 5: Fix top issues ──
-            log.info("step_fix", fixable=len(fixable))
-            self._shutdown()  # Stop coreskill before editing files
-
-            patches_applied = 0
-
-            for issue in fixable[:self.cfg.max_patches_per_cycle]:
-                # Skip if already tried and failed
-                prior = self.journal.was_tried(issue.description)
-                if prior and not prior["success"]:
-                    log.info("skip_known_failure",
-                             issue=issue.description[:60])
-                    continue
-
-                success = self._fix_one_issue(issue, journal_id)
-                if success:
-                    patches_applied += 1
-
-            if patches_applied == 0:
-                self.journal.finish_cycle(journal_id, "no_patches_applied")
+                log.info("issues_found_but_no_fix_targets",
+                         issues=len(diagnosis.issues))
+                self.journal.finish_cycle(journal_id, "no_fixable_issues")
                 return "continue"
 
-            # ── Step 6: Verify ──
-            log.info("step_verify")
-            verified = self._verify_fixes(journal_id)
-
-            if verified:
-                # Commit
-                self.git.commit(
-                    f"supervisor: fix {patches_applied} issues "
-                    f"(cycle {journal_id})"
-                )
-                self.journal.record_verification(journal_id, True)
-                self.journal.finish_cycle(journal_id, "success")
-                log.info("cycle_success",
-                         patches=patches_applied, cycle=cycle_num)
-                return "continue"
-            else:
-                # Rollback
-                log.warning("verification_failed_rollback")
-                self.surgeon.rollback_last()
-                self.git._run("checkout", ".", check=False)
-                self.journal.record_verification(journal_id, False)
-                self.journal.finish_cycle(journal_id, "failed_verification")
-                return "continue"
+            return self._phase_fix_and_verify(fixable, journal_id, cycle_num)
 
         except KeyboardInterrupt:
             log.info("interrupted")
@@ -233,6 +134,98 @@ class Supervisor:
             self._shutdown()
             self.journal.finish_cycle(journal_id, f"error: {e}")
             return "error"
+
+    def _phase_boot(self, journal_id: int):
+        """Boot coreskill and wait for prompt. Returns boot Response or None."""
+        log.info("step_boot")
+        self._proc = self.runner.start()
+        if not self._proc:
+            self.journal.finish_cycle(journal_id, "boot_failed")
+            return None
+
+        self._comm = Communicator(self._proc, self.cfg)
+        boot_resp = self._comm.wait_for_boot(self.cfg.boot_timeout)
+
+        if not boot_resp.prompt_seen:
+            log.error("boot_no_prompt", output=boot_resp.raw[-300:])
+            self._shutdown()
+            self.journal.finish_cycle(journal_id, "boot_timeout")
+            return None
+
+        log.info("boot_ok", duration=boot_resp.duration_s)
+        return boot_resp
+
+    def _phase_test(self, journal_id: int):
+        """Run all scenarios. Returns (results, report_text)."""
+        log.info("step_test")
+        scenario_runner = ScenarioRunner(self._comm, self.cfg)
+        results = scenario_runner.run_all()
+        report = format_report(results)
+        print(report)
+
+        report_path = self.cfg.logs_dir / f"cycle_{journal_id}_report.txt"
+        report_path.write_text(report)
+        return results, report
+
+    def _phase_diagnose(self, boot_resp, results, journal_id: int):
+        """Analyze results and return Diagnosis."""
+        log.info("step_diagnose")
+        command_results = [
+            {
+                "command": step.command,
+                "output": step.output,
+                "duration_s": step.duration_s,
+                "has_error": step.has_error,
+                "has_warning": step.has_warning,
+            }
+            for sr in results
+            for step in sr.steps
+        ]
+        diagnosis = self.analyzer.diagnose(boot_resp.raw, command_results)
+        self.journal.record_issues(journal_id, [
+            {"severity": i.severity, "description": i.description,
+             "category": i.category}
+            for i in diagnosis.issues
+        ])
+        return diagnosis
+
+    def _phase_fix_and_verify(self, fixable: list, journal_id: int,
+                               cycle_num: int) -> str:
+        """Apply patches for fixable issues, then verify. Returns outcome."""
+        log.info("step_fix", fixable=len(fixable))
+        self._shutdown()  # stop coreskill before editing files
+
+        patches_applied = 0
+        for issue in fixable[:self.cfg.max_patches_per_cycle]:
+            prior = self.journal.was_tried(issue.description)
+            if prior and not prior["success"]:
+                log.info("skip_known_failure", issue=issue.description[:60])
+                continue
+            if self._fix_one_issue(issue, journal_id):
+                patches_applied += 1
+
+        if patches_applied == 0:
+            self.journal.finish_cycle(journal_id, "no_patches_applied")
+            return "continue"
+
+        log.info("step_verify")
+        verified = self._verify_fixes(journal_id)
+
+        if verified:
+            self.git.commit(
+                f"supervisor: fix {patches_applied} issues (cycle {journal_id})"
+            )
+            self.journal.record_verification(journal_id, True)
+            self.journal.finish_cycle(journal_id, "success")
+            log.info("cycle_success", patches=patches_applied, cycle=cycle_num)
+        else:
+            log.warning("verification_failed_rollback")
+            self.surgeon.rollback_last()
+            self.git._run("checkout", ".", check=False)
+            self.journal.record_verification(journal_id, False)
+            self.journal.finish_cycle(journal_id, "failed_verification")
+
+        return "continue"
 
     def _fix_one_issue(self, issue: Issue, journal_id: int) -> bool:
         """Attempt to fix one issue. Returns True if patch applied."""

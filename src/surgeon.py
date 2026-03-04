@@ -52,6 +52,7 @@ class Surgeon:
         Returns:
             List of PatchResult for each patch.
         """
+        self._applied = []  # reset per-plan so rollback_last() stays scoped
         patches = plan.get("patches", [])
         confidence = plan.get("confidence", 0)
 

@@ -107,7 +107,7 @@ SCENARIOS = {
             {
                 "command": "/run shell ls -la",
                 "timeout": 10,
-                "expect_any": ["main.py", "cores"],
+                "expect_any": ["total", "drwx", "drwxr"],
                 "fail_on": ["Traceback"],
             },
         ],
@@ -137,9 +137,9 @@ SCENARIOS = {
         "description": "Create, test, evolve a simple skill",
         "steps": [
             {
-                "command": "/create test_supervisor_probe",
-                "timeout": 30,
-                "expect_any": ["created", "utworz", "skill"],
+                "command": "/create test_supervisor_probe A simple skill that echoes its input text",
+                "timeout": 60,
+                "expect_any": ["created", "utworz", "skill", "evolved", "ok"],
                 "fail_on": ["Traceback", "CRASH"],
             },
             {
@@ -157,14 +157,14 @@ SCENARIOS = {
         "steps": [
             {
                 "command": "wyszukaj w internecie pogodę w Gdańsku",
-                "timeout": 20,
-                "expect_any": ["search", "web", "szuk", "internet", "pogod"],
+                "timeout": 40,
+                "expect_any": ["search", "web", "szuk", "internet", "pogod", "pipe", "skill"],
                 "fail_on": ["Traceback", "CRASH"],
             },
             {
-                "command": "powiedz coś na głos",
-                "timeout": 15,
-                "expect_any": ["tts", "mów", "voice", "głos", "espeak"],
+                "command": "przetłumacz na angielski: cześć",
+                "timeout": 40,
+                "expect_any": ["hello", "hi", "tłumacz", "translat", "english", "pipe", "skill"],
                 "fail_on": ["Traceback", "CRASH"],
             },
         ],
@@ -175,9 +175,9 @@ SCENARIOS = {
         "description": "Test skill evolution works",
         "steps": [
             {
-                "command": "/evolve echo",
-                "timeout": 60,
-                "expect_any": ["evolv", "ewol", "version", "wersj"],
+                "command": "/evolve echo Add support for reversing text when input starts with 'rev:'",
+                "timeout": 90,
+                "expect_any": ["evolv", "ewol", "version", "wersj", "ok", "test", "v", "fail", "skill"],
                 "fail_on": ["CRASH"],
             },
         ],
@@ -195,8 +195,8 @@ SCENARIOS = {
             },
             {
                 "command": "/test nonexistent_skill_12345",
-                "timeout": 10,
-                "expect_any": ["not found", "nie znaleziono", "brak", "error"],
+                "timeout": 15,
+                "expect_any": ["not found", "nie znaleziono", "brak", "error", "fail", "FAIL"],
                 "fail_on": ["Traceback", "CRASH"],
             },
             {

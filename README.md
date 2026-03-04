@@ -21,21 +21,21 @@ evo-supervisor robi dokładnie to samo, automatycznie, w pętli:
 ┌───────────────────────────────────────────────────────┐
 │  evo-supervisor (outer core, "lustrzany JA")          │
 │                                                       │
-│  ┌───────────┐  stdin   ┌──────────────────────────┐ │
-│  │ Scenario  │ ──────→  │  Docker / subprocess     │ │
-│  │ Runner    │ ←──────  │  coreskill               │ │
-│  │ (tester)  │  stdout  │  python3 main.py         │ │
-│  └─────┬─────┘          └──────────────────────────┘ │
+│  ┌───────────┐  stdin   ┌──────────────────────────┐  │
+│  │ Scenario  │ ──────→  │  Docker / subprocess     │  │
+│  │ Runner    │ ←──────  │  coreskill               │  │
+│  │ (tester)  │  stdout  │  python3 main.py         │  │
+│  └─────┬─────┘          └──────────────────────────┘  │
 │        │ output                                       │
-│  ┌─────▼─────┐   issues   ┌────────────┐            │
-│  │ Analyzer  │ ─────────→ │  Surgeon   │            │
-│  │ (LLM)     │            │ (patcher)  │            │
-│  └───────────┘            └─────┬──────┘            │
-│                                 │ edits files        │
-│  ┌───────────┐            ┌─────▼──────┐            │
-│  │ Journal   │ ←───────── │ Git Mgr    │            │
-│  │ (memory)  │            │ (commits)  │            │
-│  └───────────┘            └────────────┘            │
+│  ┌─────▼─────┐   issues   ┌────────────┐              │
+│  │ Analyzer  │ ─────────→ │  Surgeon   │              │
+│  │ (LLM)     │            │ (patcher)  │              │
+│  └───────────┘            └─────┬──────┘              │
+│                                 │ edits files         │
+│  ┌───────────┐            ┌─────▼──────┐              │
+│  │ Journal   │ ←───────── │ Git Mgr    │              │
+│  │ (memory)  │            │ (commits)  │              │
+│  └───────────┘            └────────────┘              │
 └───────────────────────────────────────────────────────┘
 ```
 
@@ -45,6 +45,8 @@ evo-supervisor robi dokładnie to samo, automatycznie, w pętli:
   ┌─ BUILD ── Docker image z kodem coreskill
   │
   ├─ BOOT ─── Uruchom kontener, czekaj na "you> " prompt
+  │            (komunikacja stdin/stdout czytana znak-po-znaku; po timeoutach supervisor
+  │             robi resync do następnego promptu zanim wyśle kolejną komendę)
   │
   ├─ TEST ─── Wyślij scenariusze: /health, /skills, chat, edge cases
   │            Jak człowiek — wpisuje komendy, czyta odpowiedzi
@@ -141,6 +143,7 @@ evo-supervisor/
 | `intent_detection` | Klasyfikacja intencji PL | |
 | `evolve_test` | /evolve echo | |
 | `error_handling` | Nieistniejące komendy/skille | |
+| `state_persistence` | /state | |
 | `stress_rapid_commands` | 4 komendy szybko | |
 
 ## Safety
@@ -156,6 +159,7 @@ Surgeon (edytor kodu) ma zabezpieczenia:
 - **Git branch per fix** — każdy fix na osobnym branchu
 - **Verify before merge** — re-test po patchu, merge tylko jeśli pass
 - **Journal** — pamięta co próbowaliśmy, nie powtarza failed fixów
+- **Docker container name** — losowa nazwa kontenera per uruchomienie (brak konfliktów przy równoległych runach)
 
 ## Konfiguracja
 
