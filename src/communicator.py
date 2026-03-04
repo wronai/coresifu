@@ -106,25 +106,39 @@ class Communicator:
         log.warning("resync_timeout", wait=wait)
         self._buffer = ""
 
-    def send(self, command: str, timeout: int = 30) -> Response:
-        """Send a command and wait for response."""
-        log.info("send_command", command=command[:80])
+    def send(self, command: str, timeout: int = 30, retries: int = 2) -> Response:
+        """Send a command and wait for response with retry logic."""
+        log.info("send_command", command=command[:80], retries=retries)
         if not self._last_prompt_seen:
             self._resync(wait=15)
 
-        try:
-            self.proc.stdin.write(command + "\n")
-            self.proc.stdin.flush()
-        except (BrokenPipeError, OSError) as e:
-            log.error("stdin_broken", error=str(e))
-            return Response(
-                raw="", command=command, has_error=True,
-                errors=[f"Process stdin broken: {e}"]
-            )
-
-        resp = self._read_until_prompt(timeout, command=command)
-        self._last_prompt_seen = resp.prompt_seen
-        return resp
+        last_error = None
+        for attempt in range(retries + 1):
+            try:
+                self.proc.stdin.write(command + "\n")
+                self.proc.stdin.flush()
+                resp = self._read_until_prompt(timeout, command=command)
+                self._last_prompt_seen = resp.prompt_seen
+                return resp
+            except (BrokenPipeError, OSError) as e:
+                last_error = e
+                log.warning("send_error_retry", attempt=attempt + 1, retries=retries, error=str(e))
+                if attempt < retries:
+                    # Exponential backoff: 0.5s, 1s
+                    time.sleep(0.5 * (2 ** attempt))
+                    # Check if process is still alive
+                    if not self.is_alive():
+                        log.error("process_dead", error=str(e))
+                        break
+                    # Try to resync before retry
+                    self._resync(wait=5)
+                else:
+                    log.error("send_failed_all_retries", error=str(e))
+        
+        return Response(
+            raw="", command=command, has_error=True,
+            errors=[f"Process stdin broken after {retries + 1} attempts: {last_error}"]
+        )
 
     def _read_until_prompt(self, timeout: int, command: str = "") -> Response:
         """Read output until we see the you> prompt or timeout."""

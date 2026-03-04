@@ -440,27 +440,38 @@ def main():
             sys.exit(1)
 
         comm = Communicator(proc, cfg)
-        boot = comm.wait_for_boot(cfg.boot_timeout)
+        try:
+            boot = comm.wait_for_boot(cfg.boot_timeout)
 
-        if not boot.prompt_seen:
-            print("Boot failed!")
-            print(boot.raw[-500:])
-            sys.exit(1)
+            if not boot.prompt_seen:
+                print("Boot failed!")
+                print(boot.raw[-500:])
+                sys.exit(1)
 
-        sr = ScenarioRunner(comm, cfg)
-        names = args.scenario if args.scenario else None
-        results = sr.run_all(names)
-        print(format_report(results))
+            sr = ScenarioRunner(comm, cfg)
+            names = args.scenario if args.scenario else None
+            results = sr.run_all(names)
+            print(format_report(results))
 
-        comm.close()
-        runner.stop()
-
-        ok = all(r.passed for r in results)
-        sys.exit(0 if ok else 1)
+            ok = all(r.passed for r in results)
+            sys.exit(0 if ok else 1)
+        finally:
+            # Ensure cleanup happens even on error/interrupt
+            comm.close()
+            runner.stop()
 
     # Full supervisor mode
     supervisor = Supervisor(cfg, runner_factory=runner_factory)
-    supervisor.run(max_cycles=args.cycles)
+    try:
+        supervisor.run(max_cycles=args.cycles)
+    except KeyboardInterrupt:
+        log.info("interrupted_by_user")
+        supervisor._shutdown()
+        sys.exit(130)  # Standard exit code for SIGINT
+    except Exception as e:
+        log.error("fatal_error", error=str(e))
+        supervisor._shutdown()
+        sys.exit(1)
 
 
 if __name__ == "__main__":

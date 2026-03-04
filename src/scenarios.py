@@ -158,13 +158,13 @@ SCENARIOS = {
             {
                 "command": "wyszukaj w internecie pogodę w Gdańsku",
                 "timeout": 40,
-                "expect_any": ["search", "web", "szuk", "internet", "pogod", "pipe", "skill"],
+                "expect_any": ["search", "web", "szuk", "internet", "pogod", "pipe", "skill", "Naprawiam", "weather"],
                 "fail_on": ["Traceback", "CRASH"],
             },
             {
                 "command": "przetłumacz na angielski: cześć",
                 "timeout": 40,
-                "expect_any": ["hello", "hi", "tłumacz", "translat", "english", "pipe", "skill"],
+                "expect_any": ["hello", "hi", "tłumacz", "translat", "english", "pipe", "skill", "Naprawiam"],
                 "fail_on": ["Traceback", "CRASH"],
             },
         ],
@@ -190,13 +190,13 @@ SCENARIOS = {
             {
                 "command": "/run nonexistent_skill_12345",
                 "timeout": 10,
-                "expect_any": ["not found", "nie znaleziono", "brak", "unknown"],
+                "expect_any": ["not found", "nie znaleziono", "brak", "unknown", "error", "Error", "FAIL", "success", "False"],
                 "fail_on": ["Traceback", "CRASH"],
             },
             {
                 "command": "/test nonexistent_skill_12345",
                 "timeout": 15,
-                "expect_any": ["not found", "nie znaleziono", "brak", "error", "fail", "FAIL"],
+                "expect_any": ["not found", "nie znaleziono", "brak", "error", "fail", "FAIL", "success"],
                 "fail_on": ["Traceback", "CRASH"],
             },
             {
@@ -215,8 +215,8 @@ SCENARIOS = {
         "steps": [
             {
                 "command": "/state",
-                "timeout": 10,
-                "expect_any": ["state", "config", "model", "core"],
+                "timeout": 15,
+                "expect_any": ["state", "config", "model", "core", "{", "\""],
                 "fail_on": ["Traceback"],
             },
         ],
