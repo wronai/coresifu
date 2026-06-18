@@ -1,0 +1,66 @@
+# coresifu | 11f 2405L | python:11
+# Keys: M=modules, D=details, i=imports, c=classes, f=functions, m=methods
+M[11]:
+  src/__init__.py,0
+  src/analyzer.py,303
+  src/communicator.py,182
+  src/config.py,49
+  src/docker_runner.py,156
+  src/git_manager.py,141
+  src/journal.py,153
+  src/main.py,385
+  src/scenarios.py,325
+  src/surgeon.py,246
+  tests/test_coresifu.py,13
+D:
+  src/analyzer.py:
+    i: json,re,litellm,structlog,dataclasses.{dataclass,field},typing.Optional
+    e: Issue,Diagnosis,ANALYZE_SYSTEM,PLAN_SYSTEM,Analyzer
+    Issue:   # A single detected issue.
+    Diagnosis:   # Complete diagnosis from analyzing a s...
+    Analyzer: __init__(1),_llm_call(3),_parse_json(1),diagnose(2),_rule_based_analysis(2)  # Analyzes coreskill output using LLM.
+  src/communicator.py:
+    i: re,time,select,threading,structlog,dataclasses.{dataclass,field},queue.{Empty,Queue},typing.Optional
+    e: Response,Communicator
+    Response:   # Single response from coreskill.
+    Communicator: __init__(2),_read_loop(0),wait_for_boot(1),_resync(1),send(3)  # Send commands to coreskill and read r...
+  src/config.py:
+    i: os,dataclasses.{dataclass,field},pathlib.Path,typing.Optional
+    e: Config
+    Config: __post_init__(0),validate(0)  # All supervisor settings.
+  src/docker_runner.py:
+    i: subprocess,shutil,time,json,uuid,structlog,pathlib.Path,typing.Optional
+    e: DockerRunner,SubprocessRunner,create_runner
+    DockerRunner: __init__(1),available(0),build(0),start(0),stop(0)  # Build, start, stop coreskill Docker c...
+    SubprocessRunner: __init__(1),available(0),build(0),start(0),stop(0)  # Run coreskill directly as subprocess...
+    create_runner(config)
+  src/git_manager.py:
+    i: subprocess,datetime,structlog,datetime.timezone,pathlib.Path,typing.Optional
+    e: GitManager
+    GitManager: __init__(1),_run(0),is_repo(0),init_if_needed(0),current_branch(0)  # Manages git operations on coreskill r...
+  src/journal.py:
+    i: json,datetime,structlog,datetime.timezone,pathlib.Path,typing.Optional
+    e: Journal
+    Journal: __init__(1),_load(0),_empty(0),_save(0),start_cycle(0)  # Records every action: what was tested...
+  src/main.py:
+    i: sys,time,json,argparse,datetime,structlog,config.Config,datetime.timezone,docker_runner.create_runner,pathlib.Path
+    e: Supervisor,main
+    Supervisor: __init__(2),run(1),_run_one_cycle(1),_phase_boot(1),_phase_test(1)  # The outer core.
+    main()
+  src/scenarios.py:
+    i: time,yaml,structlog,dataclasses.{dataclass,field},pathlib.Path,typing.Optional
+    e: StepResult,ScenarioResult,SCENARIOS,ScenarioRunner,format_report
+    StepResult:   # Result of one scenario step.
+    ScenarioResult: failed_steps(0),error_steps(0)  # Result of running a full scenario.
+    ScenarioRunner: __init__(2),run_all(1),run_one(2),_run_step(1),load_custom_scenarios(1)  # Runs test scenarios against a live co...
+    format_report(results:list[ScenarioResult])->str
+  src/surgeon.py:
+    i: re,shutil,difflib,hashlib,datetime,structlog,datetime.timezone,pathlib.Path,typing.Optional
+    e: PatchResult,Surgeon
+    PatchResult: __init__(3),__repr__(0)  # Result of applying a single patch.
+    Surgeon: __init__(1),apply_plan(1),_apply_one(1),_backup(2),_restore(1)  # Applies code patches to coreskill sou...
+  tests/test_coresifu.py:
+    i: sys,pathlib.Path
+    e: test_placeholder,test_import
+    test_placeholder()
+    test_import()

@@ -1,0 +1,134 @@
+# code2llm | 10f 2376L | py:10 | 2026-03-04
+# CC̄=3.7 | critical:7/94 | dups:0 | cycles:0
+
+HEALTH[3]:
+  🟡 CC    _fix_one_issue CC=15 (limit:15)
+  🟡 CC    main CC=17 (limit:15)
+  🟡 CC    _apply_one CC=23 (limit:15)
+
+REFACTOR[1]:
+  1. split 3 high-CC methods  (CC>15)
+
+COUPLING: no cross-package imports detected
+
+LAYERS:
+  src/                            CC̄=3.7    ←in:0  →out:0
+  │ !! main                       478L  1C   11m  CC=17     ←0
+  │ !  scenarios                  384L  3C    6m  CC=12     ←1
+  │ !  analyzer                   372L  3C    8m  CC=12     ←0
+  │ !! surgeon                    311L  2C   15m  CC=23     ←0
+  │ !  communicator               224L  2C   10m  CC=12     ←0
+  │ docker_runner              193L  2C   13m  CC=4      ←0
+  │ journal                    178L  1C   13m  CC=8      ←0
+  │ git_manager                169L  1C   16m  CC=4      ←0
+  │ config                      66L  1C    2m  CC=4      ←0
+  │ __init__                     1L  0C    0m  CC=0.0    ←0
+  │
+
+DUPLICATES[0]: none
+
+FUNCTIONS (CC≥10, 7 of 94):
+   23.0  Surgeon._apply_one                         45n  11exit  loops+cond+ret  !! split
+   17.0  main                                       17n   2exit  loops+cond+ret  !! split
+   15.0  Supervisor._fix_one_issue                  24n   7exit  loops+cond+ret  !! split
+   12.0  format_report                               9n   2exit  loops+cond+ret
+   12.0  Analyzer._rule_based_analysis              16n   2exit  loops+cond+ret
+   12.0  Communicator._read_until_prompt            15n   2exit  loops+cond+ret
+   10.0  Supervisor._run_one_cycle                   2n   1exit  
+
+  summary:
+    critical(≥10): 7 | high(5-10): 15 | medium(2-5): 43 | low(<2): 29
+    7% CC≥10  23% CC≥5
+
+HOTSPOTS:
+  #1  main                                 fan=27   "calls 27 functions"
+  #2  Surgeon._apply_one                   fan=23   "Surgeon method, fan-out=23"
+  #3  Communicator._read_until_prompt      fan=21   "Communicator method, fan-out=21"
+  #4  Supervisor._fix_one_issue            fan=17   "Supervisor method, fan-out=17"
+  #5  Supervisor._verify_fixes             fan=13   "Supervisor method, fan-out=13"
+  #6  Analyzer.diagnose                    fan=12   "Analyzer method, fan-out=12"
+  #7  Communicator.send                    fan=12   "Communicator method, fan-out=12"
+  #8  Supervisor._phase_fix_and_verify     fan=12   "Supervisor method, fan-out=12"
+  #9  Supervisor.run                       fan=11   "Supervisor method, fan-out=11"
+  #10 Supervisor._run_one_cycle            fan=11   "Supervisor method, fan-out=11"
+
+CLASSES:
+  GitManager                     ████████████████████████  16m  CC̄=1.9   max=4   
+  Journal                        ███████████████████       13m  CC̄=2.9   max=8   
+  Surgeon                        ███████████████████       13m  CC̄=4.4   max=23    !!
+  Communicator                   ███████████████           10m  CC̄=4.0   max=12  
+  Supervisor                     ███████████████           10m  CC̄=5.5   max=15    !!
+  Analyzer                       ████████████               8m  CC̄=5.6   max=12  
+  DockerRunner                   █████████                  6m  CC̄=2.3   max=4   
+  SubprocessRunner               █████████                  6m  CC̄=1.3   max=3   
+  ScenarioRunner                 ███████                    5m  CC̄=4.4   max=8   
+  PatchResult                    ███                        2m  CC̄=1.5   max=2   
+  Config                         ███                        2m  CC̄=3.5   max=4   
+  StepResult                                                0m  CC̄=0.0   max=0.0 
+  ScenarioResult                                            0m  CC̄=0.0   max=0.0 
+  Issue                                                     0m  CC̄=0.0   max=0.0 
+  Diagnosis                                                 0m  CC̄=0.0   max=0.0 
+  Response                                                  0m  CC̄=0.0   max=0.0 
+
+D:
+  src/surgeon.py:
+    e: PatchResult,Surgeon
+    PatchResult  # Result of applying a single patch....
+      __init__(3)  CC=1.0
+    Surgeon  # Applies code patches to coreskill source.
+
+Safety rules:
+- A...
+      __init__(1)  CC=1.0
+  src/main.py:
+    e: Supervisor,main
+    Supervisor  # The outer core. Runs improvement cycles on coreskill.
+
+Each ...
+      __init__(2)  CC=2.0
+    main()
+  src/scenarios.py:
+    e: StepResult,ScenarioResult,ScenarioRunner,format_report
+    StepResult  # Result of one scenario step....
+    ScenarioResult  # Result of running a full scenario....
+    ScenarioRunner  # Runs test scenarios against a live coreskill communicator....
+      __init__(2)  CC=1.0
+    format_report(results)
+  src/analyzer.py:
+    e: Issue,Diagnosis,Analyzer
+    Issue  # A single detected issue....
+    Diagnosis  # Complete diagnosis from analyzing a session....
+    Analyzer  # Analyzes coreskill output using LLM....
+      __init__(1)  CC=1.0
+  src/communicator.py:
+    e: Response,Communicator
+    Response  # Single response from coreskill....
+    Communicator  # Send commands to coreskill and read responses.
+
+Uses a backg...
+      __init__(2)  CC=1.0
+  src/journal.py:
+    e: Journal
+    Journal  # Records every action: what was tested, found, patched, verif...
+      __init__(1)  CC=1.0
+        → _load(0)  CC=3.0
+        → _empty(0)  CC=1.0
+  src/docker_runner.py:
+    e: DockerRunner,SubprocessRunner,create_runner
+    DockerRunner  # Build, start, stop coreskill Docker containers....
+      __init__(1)  CC=1.0
+    SubprocessRunner  # Run coreskill directly as subprocess (no Docker)....
+      __init__(1)  CC=1.0
+    create_runner(config)
+  src/git_manager.py:
+    e: GitManager
+    GitManager  # Manages git operations on coreskill repo.
+
+Workflow:
+1. Crea...
+      __init__(1)  CC=1.0
+  src/config.py:
+    e: Config
+    Config  # All supervisor settings....
+      __post_init__(0)  CC=3.0
+  src/__init__.py:

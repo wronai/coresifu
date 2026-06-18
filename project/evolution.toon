@@ -1,0 +1,27 @@
+# code2llm/evolution | 94 func | 9f | 2026-03-04
+
+NEXT[3] (ranked by impact):
+  [1] !  SPLIT-FUNC      Surgeon._apply_one  CC=23  fan=23
+      WHY: CC=23 exceeds 15
+      EFFORT: ~1h  IMPACT: 529
+
+  [2] !  SPLIT-FUNC      main  CC=17  fan=27
+      WHY: CC=17 exceeds 15
+      EFFORT: ~1h  IMPACT: 459
+
+  [3] !  SPLIT-FUNC      Supervisor._fix_one_issue  CC=15  fan=17
+      WHY: CC=15 exceeds 15
+      EFFORT: ~1h  IMPACT: 255
+
+
+RISKS[0]: none
+
+METRICS-TARGET:
+  CC̄:          3.7 → ≤2.6
+  max-CC:      23 → ≤11
+  god-modules: 0 → 0
+  high-CC(≥15): 3 → ≤1
+  hub-types:   0 → ≤0
+
+HISTORY:
+  prev CC̄=3.7 → now CC̄=3.7
